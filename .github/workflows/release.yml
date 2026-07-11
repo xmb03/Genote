@@ -28,12 +28,7 @@ jobs:
         with:
           files: genote-*.tar.gz
           body: |
-            First release of genote.
-
-            Download the archive, extract it, and run:
-            ```
-            tar xzf genote-linux-x86_64.tar.gz
-            ./genote "your topic"
-            ```
-
             See the [README](https://github.com/xmb03/Genote#readme) for setup instructions.
+
+            ### Changes in ${{ github.ref_name }}
+            - New `use_covered_topics` option: constrains the model to only use concepts from already-covered topics (identified by note filenames).
