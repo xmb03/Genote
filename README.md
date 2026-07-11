@@ -1,4 +1,4 @@
-# genote
+# Genote
 
 A CLI tool that generates IT notes using local LLMs via Ollama. Feed it a topic and a few example notes, and it writes a new one in your style.
 
