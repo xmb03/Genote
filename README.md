@@ -32,7 +32,7 @@ The binary will be at `target/release/genote`.
 Grab the latest binary from the [Releases page](https://github.com/xmb03/Genote/releases).
 
 ```bash
-curl -L https://github.com/xmb03/Genote/releases/latest/download/genote-v0.2.0-linux-x86_64.tar.gz | tar xz
+curl -L https://github.com/xmb03/Genote/releases/latest/download/genote-v0.2.1-linux-x86_64.tar.gz | tar xz
 sudo mv genote /usr/local/bin/
 ```
 
