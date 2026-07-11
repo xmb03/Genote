@@ -16,6 +16,7 @@ struct Config {
     lang: String,
     note_size: String,
     notes_count: Option<u32>,
+    use_covered_topics: Option<bool>,
 }
 
 /// Expands paths like "~/Documents" to the full path using the $HOME env var.
@@ -82,6 +83,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut count: u32 = 0;
     let max_examples = config.notes_count.unwrap_or(7);
 
+    // Collect all .md filenames as covered topics (before the limit, so we get the full list)
+    let mut covered_topics: Vec<String> = Vec::new();
+    if config.use_covered_topics.unwrap_or(false) {
+        if let Ok(entries) = fs::read_dir(path) {
+            for entry in entries.flatten() {
+                let file_path = entry.path();
+                if file_path.extension().and_then(|s| s.to_str()) == Some("md") {
+                    if let Some(stem) = file_path.file_stem().and_then(|s| s.to_str()) {
+                        covered_topics.push(stem.replace('_', " "));
+                    }
+                }
+            }
+        }
+    }
+
     if let Ok(entries) = fs::read_dir(path) {
         for entry in entries.flatten() {
             let file_path = entry.path();
@@ -116,14 +132,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         _ => unreachable!(), // we validated this above so it should never hit this branch
     };
 
+    let covered_instruction = if config.use_covered_topics.unwrap_or(false) && !covered_topics.is_empty() {
+        format!(
+            "\n\nYou have already studied the following topics: {}.\n\
+            Only use concepts from exactly these topics. \
+            Do NOT introduce any concepts, terms, or ideas from topics outside this list. \
+            If you do not have enough covered topics to write about the requested subject, \
+            write only about what is directly related to the listed topics.",
+            covered_topics.join(", ")
+        )
+    } else {
+        String::new()
+    };
+
     let prompt = format!(
         "Below are examples of my IT notes in Markdown format.\n\n\
         {}\n\
         Based on the style, structure, level of detail, and presentation of these examples, \
         write a new note on the topic: \"{}\".\n\n\
-        Write the note strictly in {} language. {}\n\
+        Write the note strictly in {} language. {}\
+        {}\n\
         OUTPUT ONLY THE NOTE IN MARKDOWN FORMAT. Do not add any introductory or concluding remarks.",
-        examples_text, topic, config.lang, size_instruction
+        examples_text, topic, config.lang, size_instruction, covered_instruction
     );
 
     println!(

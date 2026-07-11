@@ -20,3 +20,9 @@ note_size = "small"
 
 # Max number of example notes to use as style reference (optional, default 7)
 notes_count = 7
+
+# If true, the model will be constrained to only use concepts from topics
+# whose filenames (without .md) exist in the notes_dir.
+# The model will NOT introduce concepts from topics outside this list.
+# (optional, default false)
+# use_covered_topics = true
