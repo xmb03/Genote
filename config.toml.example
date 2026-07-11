@@ -1,6 +1,22 @@
+# Which model to use in Ollama. Run `ollama list` to see available models.
 model = "your-model-name"
+
+# Ollama API endpoint. Usually http://127.0.0.1:11434/api/generate
+# Change the IP/port if Ollama runs on another machine.
 api_url = "http://127.0.0.1:11434/api/generate"
+
+# Path to your folder with existing .md notes.
+# The tool reads these to learn your writing style.
+# Supports ~/ for home directory.
 notes_dir = "~/path/to/your/notes"
+
+# Language for the generated note: "en", "ru", "de", etc.
 lang = "en"
+
+# How detailed the note should be:
+#   "small" — short and to the point
+#   "big"   — comprehensive and detailed
 note_size = "small"
+
+# Max number of example notes to use as style reference (optional, default 7)
 notes_count = 7
