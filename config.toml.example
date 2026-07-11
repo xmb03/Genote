@@ -1,0 +1,6 @@
+model = "your-model-name"
+api_url = "http://127.0.0.1:11434/api/generate"
+notes_dir = "~/path/to/your/notes"
+lang = "en"
+note_size = "small"
+notes_count = 7

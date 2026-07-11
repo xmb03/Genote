@@ -1,0 +1,6 @@
+/target
+*.un~
+config.toml
+main
+.DS_Store
+Thumbs.db
