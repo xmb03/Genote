@@ -13,17 +13,30 @@ genote reads your existing .md notes from a directory, sends them as style examp
 
 ## Installation
 
+### From source
+
+Requires [Rust](https://rustup.rs).
+
 ```bash
-git clone https://github.com/your-username/genote
-cd genote
+git clone https://github.com/xmb03/Genote.git
+cd Genote
 cargo build --release
 ```
 
 The binary will be at `target/release/genote`.
 
+### Binary download
+
+Grab the latest binary from the [Releases page](https://github.com/xmb03/Genote/releases).
+
+```bash
+curl -L https://github.com/xmb03/Genote/releases/latest/download/genote-v0.1.0-linux-x86_64.tar.gz | tar xz
+sudo mv genote /usr/local/bin/
+```
+
 ## Setup
 
-Copy the example config and adjust it:
+Copy the example config and adjust it to your environment:
 
 ```bash
 cp config.toml.example config.toml
@@ -31,14 +44,16 @@ cp config.toml.example config.toml
 
 Edit `config.toml`:
 
-| Field        | Description                                          |
-|-------------|------------------------------------------------------|
-| `model`     | The Ollama model to use (e.g. `gemma3`, `llama3`)    |
-| `api_url`   | Your Ollama API endpoint                             |
-| `notes_dir` | Directory containing your existing .md notes         |
-| `lang`      | Language for the generated note (`en`, `ru`, etc.)   |
-| `note_size` | `small` for concise notes or `big` for detailed ones |
-| `notes_count` | How many example notes to use (default 7)          |
+| Field          | Description                                          |
+|----------------|------------------------------------------------------|
+| `model`        | The Ollama model to use (e.g. `gemma3`, `llama3`)    |
+| `api_url`      | Your Ollama API endpoint                             |
+| `notes_dir`    | Directory containing your existing .md notes         |
+| `lang`         | Language for the generated note (`en`, `ru`, etc.)   |
+| `note_size`    | `small` for concise notes or `big` for detailed ones |
+| `notes_count`  | How many example notes to use (default 7)            |
+
+You need to have at least one `.md` file in your notes directory for genote to learn your writing style.
 
 ## Usage
 
