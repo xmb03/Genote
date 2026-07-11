@@ -41,11 +41,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let topic = &args[1];
 
-    // Step 2: read config.toml from the current directory
-    // If the file is missing we point the user to the example config.
-    let config_content = fs::read_to_string("config.toml").unwrap_or_else(|_| {
-        eprintln!("Error: config.toml not found in the current directory.");
-        eprintln!("Please create it based on config.toml.example");
+    // Step 2: read config.toml from the binary's directory
+    let config_path = env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.join("config.toml")))
+        .filter(|p| p.exists())
+        .unwrap_or_else(|| PathBuf::from("config.toml"));
+
+    let config_content = fs::read_to_string(&config_path).unwrap_or_else(|_| {
+        eprintln!("Error: config.toml not found next to the binary.");
+        eprintln!("Place it at: {:?}", config_path);
+        eprintln!("Or create it based on config.toml.example");
         std::process::exit(1);
     });
 
