@@ -9,13 +9,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions-rust-lang/setup-rust-toolchain@v1
 
-      - run: cargo build --release
+      - name: Build binary
+        run: cargo build --release
 
-      - run: tar czf genote-${{ github.ref_name }}-linux-x86_64.tar.gz -C target/release genote
+      - name: Prepare archive
+        run: |
+          mkdir -p dist
+          cp target/release/genote dist/
+          cd dist && tar czf ../genote-linux-x86_64.tar.gz genote
 
-      - uses: softprops/action-gh-release@v2
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
           files: genote-*.tar.gz
+          body: |
+            First release of genote.
+
+            Download the archive, extract it, and run:
+            ```
+            tar xzf genote-linux-x86_64.tar.gz
+            ./genote "your topic"
+            ```
+
+            See the [README](https://github.com/xmb03/Genote#readme) for setup instructions.
