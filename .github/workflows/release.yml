@@ -16,9 +16,10 @@ jobs:
 
       - name: Prepare archive
         run: |
+          BIN=$(grep '^name = ' Cargo.toml | head -1 | sed 's/name = "\(.*\)"/\1/')
           mkdir -p dist
-          cp target/release/genote dist/
-          cd dist && tar czf ../genote-linux-x86_64.tar.gz genote
+          cp "target/release/$BIN" dist/
+          cd dist && tar czf "../$BIN-linux-x86_64.tar.gz" "$BIN"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
