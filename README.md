@@ -66,6 +66,10 @@ genote "Rust ownership and borrowing"
 
 The generated note appears as a new .md file in your notes directory.
 
+## Demo
+
+![Genote demo](demo.gif)
+
 ## License
 
 MIT
