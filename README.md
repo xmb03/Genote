@@ -2,6 +2,10 @@
 
 A CLI tool that generates IT notes using local LLMs via Ollama. Feed it a topic and a few example notes, and it writes a new one in your style.
 
+## Demo
+
+![Genote demo](demo.gif)
+
 ## How it works
 
 genote reads your existing .md notes from a directory, sends them as style examples to an Ollama model, and generates a new note on the topic you specify. The more example notes you have, the better it matches your writing style.
@@ -65,10 +69,6 @@ genote "Rust ownership and borrowing"
 ```
 
 The generated note appears as a new .md file in your notes directory.
-
-## Demo
-
-![Genote demo](demo.gif)
 
 ## License
 
