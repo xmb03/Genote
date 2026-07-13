@@ -31,4 +31,8 @@ jobs:
             See the [README](https://github.com/xmb03/Genote#readme) for setup instructions.
 
             ### Changes in ${{ github.ref_name }}
-            - New `use_covered_topics` option: constrains the model to only use concepts from already-covered topics (identified by note filenames).
+            - All config options are now overridable via CLI flags (`--model`, `--api-url`, `--notes-dir`, `--lang`, `--note-size`, `--notes-count`, `--use-covered-topics`).
+            - `--note-size small` now targets 15-30 lines (was 3-5 sentences).
+            - Optional `(hint)` in the topic argument lets you pass extra instructions to the model without affecting the filename.
+            - Strict prompt rewrite: model no longer copies example length, follows size instruction precisely.
+            - Added `clap` for robust CLI argument parsing with `--help`.

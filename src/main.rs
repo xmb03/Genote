@@ -1,3 +1,4 @@
+use clap::Parser;
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::json;
@@ -19,6 +20,33 @@ struct Config {
     use_covered_topics: Option<bool>,
 }
 
+#[derive(Parser)]
+#[command(name = "genote", about = "Generate IT study notes using Ollama")]
+struct Args {
+    topic: String,
+
+    #[arg(short = 'm', long = "model")]
+    model: Option<String>,
+
+    #[arg(long = "api-url")]
+    api_url: Option<String>,
+
+    #[arg(short = 'd', long = "notes-dir")]
+    notes_dir: Option<String>,
+
+    #[arg(short = 'l', long = "lang")]
+    lang: Option<String>,
+
+    #[arg(short = 's', long = "note-size")]
+    note_size: Option<String>,
+
+    #[arg(short = 'n', long = "notes-count")]
+    notes_count: Option<u32>,
+
+    #[arg(long = "use-covered-topics")]
+    use_covered_topics: Option<bool>,
+}
+
 /// Expands paths like "~/Documents" to the full path using the $HOME env var.
 /// Rust does not expand tildes on its own, so we do it manually.
 fn expand_home(path: &str) -> PathBuf {
@@ -32,16 +60,24 @@ fn expand_home(path: &str) -> PathBuf {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Step 1: grab the topic from the command line
-    // The program takes exactly one argument. No argument, no point in continuing.
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        eprintln!("Usage: {} \"TOPIC NAME\"", args[0]);
-        std::process::exit(1);
-    }
-    let topic = &args[1];
+    // Step 1: parse CLI args
+    let args = Args::parse();
 
-    // Step 2: read config.toml from the binary's directory
+    let topic = &args.topic;
+
+    // Extract optional hint from parentheses: "topic (hint)" → clean_topic + hint
+    let (clean_topic, user_hint): (String, Option<String>) = topic
+        .find('(')
+        .and_then(|o| topic.rfind(')').map(|c| (o, c)))
+        .filter(|(o, c)| o < c)
+        .map(|(o, c)| {
+            let clean = topic[..o].trim().to_string();
+            let hint = topic[o + 1..c].trim().to_string();
+            (clean, Some(hint))
+        })
+        .unwrap_or((topic.clone(), None));
+
+    // Step 2: read config.toml
     let config_path = env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|d| d.join("config.toml")))
@@ -60,19 +96,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     });
 
+    // Merge CLI args into config (CLI takes precedence)
+    let notes_dir = args.notes_dir.unwrap_or(config.notes_dir);
+    let notes_count = args.notes_count.or(config.notes_count);
+    let use_covered_topics = args.use_covered_topics.or(config.use_covered_topics);
+    let note_size = args.note_size.unwrap_or(config.note_size);
+    let lang = args.lang.unwrap_or(config.lang);
+    let model = args.model.unwrap_or(config.model);
+    let api_url = args.api_url.unwrap_or(config.api_url);
+
     // note_size must be either "small" or "big". We check it early
     // before doing anything else to fail fast.
-    if config.note_size != "small" && config.note_size != "big" {
+    if note_size != "small" && note_size != "big" {
         eprintln!(
             "Error: note_size must be either \"small\" or \"big\", got \"{}\"",
-            config.note_size
+            note_size
         );
         std::process::exit(1);
     }
 
     // Step 3: resolve the notes directory and check it exists
     // expand_home handles the tilde in the path if present.
-    let notes_pathbuf = expand_home(&config.notes_dir);
+    let notes_pathbuf = expand_home(&notes_dir);
     let path = Path::new(&notes_pathbuf);
 
     if !path.exists() {
@@ -87,11 +132,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // We read up to notes_count files (default 7) so the model can learn the writing style.
     let mut examples_text = String::new();
     let mut count: u32 = 0;
-    let max_examples = config.notes_count.unwrap_or(7);
+    let max_examples = notes_count.unwrap_or(7);
 
     // Collect all .md filenames as covered topics (before the limit, so we get the full list)
     let mut covered_topics: Vec<String> = Vec::new();
-    if config.use_covered_topics.unwrap_or(false) {
+    if use_covered_topics.unwrap_or(false) {
         if let Ok(entries) = fs::read_dir(path) {
             for entry in entries.flatten() {
                 let file_path = entry.path();
@@ -130,21 +175,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     }
 
-    // Step 5: build the prompt for the model
-    // We feed the style examples, the topic, the target language, and a size hint.
-    let size_instruction = match config.note_size.as_str() {
-        "small" => "The note should be small — concise and to the point.",
-        "big" => "The note should be big — comprehensive and detailed.",
+    // Step 5: build a strict prompt for the model
+    let size_instruction = match note_size.as_str() {
+        "small" => "SMALL — brief note, 15-30 lines depending on the topic. Key points only, no fluff.",
+        "big" => "BIG — comprehensive and detailed. Full coverage of the topic.",
         _ => unreachable!(), // we validated this above so it should never hit this branch
     };
 
-    let covered_instruction = if config.use_covered_topics.unwrap_or(false) && !covered_topics.is_empty() {
+    let hint_instruction = user_hint
+        .as_ref()
+        .map(|h| format!("- Additional instruction: {}\n", h))
+        .unwrap_or_default();
+
+    let covered_instruction = if use_covered_topics.unwrap_or(false) && !covered_topics.is_empty() {
         format!(
-            "\n\nYou have already studied the following topics: {}.\n\
-            Only use concepts from exactly these topics. \
-            Do NOT introduce any concepts, terms, or ideas from topics outside this list. \
-            If you do not have enough covered topics to write about the requested subject, \
-            write only about what is directly related to the listed topics.",
+            "- Restricted topics: {}. \
+            Only use concepts from EXACTLY these topics. \
+            Do NOT introduce anything outside this list.\n",
             covered_topics.join(", ")
         )
     } else {
@@ -152,28 +199,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let prompt = format!(
-        "Below are examples of my IT notes in Markdown format.\n\n\
-        {}\n\
-        Based on the style, structure, level of detail, and presentation of these examples, \
-        write a new note on the topic: \"{}\".\n\n\
-        Write the note strictly in {} language. {}\
-        {}\n\
-        OUTPUT ONLY THE NOTE IN MARKDOWN FORMAT. Do not add any introductory or concluding remarks.",
-        examples_text, topic, config.lang, size_instruction, covered_instruction
+        "You are a strict note-writing assistant. Follow ALL rules EXACTLY.\n\n\
+        RULES:\n\
+        - Write a note about: \"{}\"\n\
+        - Language: {}. Write ONLY in this language.\n\
+        - Size: {}\n\
+        {}\
+        {}\
+        - Use the examples below for STYLE ONLY (headings, lists, code blocks). \
+        DO NOT copy their length or depth — follow the size rule above.\n\
+        - OUTPUT ONLY THE NOTE. No greetings, no introductions, no conclusions, \
+        no commentary, no extra text.\n\n\
+        STYLE EXAMPLES:\n{}\n\n\
+        OUTPUT:",
+        clean_topic,
+        lang,
+        size_instruction,
+        hint_instruction,
+        covered_instruction,
+        examples_text,
     );
 
     println!(
         "Sending request (Model: {}, Topic: \"{}\", style examples: {})...",
-        config.model, topic, count
+        model, clean_topic, count
     );
 
     // Step 6: send the request to Ollama and time it
     let client = Client::new();
     let start = Instant::now();
     let res = client
-        .post(&config.api_url)
+        .post(&api_url)
         .json(&json!({
-            "model": config.model,
+            "model": model,
             "prompt": prompt,
             "stream": false
         }))
@@ -222,8 +280,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // Step 7: save the generated note as a .md file in the notes directory
-    // We replace spaces and slashes in the topic name so it works as a filename.
-    let safe_filename = topic.replace(' ', "_").replace('/', "_");
+    // We replace spaces and slashes in the clean topic name so it works as a filename.
+    let safe_filename = clean_topic.replace(' ', "_").replace('/', "_");
     let new_file_path = path.join(format!("{}.md", safe_filename));
 
     fs::write(&new_file_path, &generated_text)?;
