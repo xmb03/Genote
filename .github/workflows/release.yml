@@ -29,7 +29,8 @@ jobs:
           files: genote-*.tar.gz
           body: |
             ### Changes in ${{ github.ref_name }}
-            - **Profiles** — `[profile.xxx]` sections in `config.toml` with multi-field inheritance: global defaults → profile → CLI flags.
-            - `--profile` flag to select a profile at runtime.
-            - **Slimmer codebase** — core logic reduced by 20% (397 → 318 lines): unified config merge, single-pass directory scan, reusable validation helper.
-            - See `config.toml.example` for profile syntax and flat-mode setup.
+            - **Multi-topic mode** — generate several notes in one command: `genote "Topic A" "Topic B" "Topic C"`.
+            - **Sequential generation** — each note is a fresh Ollama request with full context reset, no context bleed.
+            - Each topic independently supports `(hint)` syntax.
+            - Errors in one topic don't interrupt the rest of the batch.
+            - Progress indicator `[N/M]` per note.

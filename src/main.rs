@@ -30,7 +30,8 @@ struct ConfigFile {
 #[derive(Parser)]
 #[command(about = "Generate IT study notes using Ollama")]
 struct Args {
-    topic: String,
+    #[arg(required = true)]
+    topics: Vec<String>,
 
     #[arg(short = 'm', long = "model")]
     model: Option<String>,
@@ -76,17 +77,6 @@ fn req<T>(v: Option<T>, name: &str) -> T {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
-    let topic = &args.topic;
-
-    let (clean_topic, user_hint) = topic
-        .find('(')
-        .and_then(|o| topic.rfind(')').map(|c| (o, c)))
-        .filter(|(o, c)| o < c)
-        .map(|(o, c)| {
-            (topic[..o].trim().to_string(), Some(topic[o + 1..c].trim().to_string()))
-        })
-        .unwrap_or((topic.clone(), None));
-
     let config_path = env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|d| d.join("config.toml")))
@@ -213,106 +203,135 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(1);
     }
 
-    let hint_instruction = user_hint
-        .as_ref()
-        .map(|h| format!("- Additional instruction: {}\n", h))
-        .unwrap_or_default();
-
-    let covered_instruction = if use_covered && !covered_topics.is_empty() {
-        format!(
-            "- Restricted topics: {}. \
-             Only use concepts from EXACTLY these topics. \
-             Do NOT introduce anything outside this list.\n",
-            covered_topics.join(", ")
-        )
-    } else {
-        String::new()
-    };
-
-    let prompt = format!(
-        "You are a strict note-writing assistant. Follow ALL rules EXACTLY.\n\n\
-         RULES:\n\
-         - Write a note about: \"{}\"\n\
-         - Language: {}. Write ONLY in this language.\n\
-         - Size: {}\n\
-         {}\
-         {}\
-         - Use the examples below for STYLE ONLY (headings, lists, code blocks). \
-         DO NOT copy their length or depth — follow the size rule above.\n\
-         - OUTPUT ONLY THE NOTE. No greetings, no introductions, no conclusions, \
-         no commentary, no extra text.\n\n\
-         STYLE EXAMPLES:\n{}\n\n\
-         OUTPUT:",
-        clean_topic,
-        lang,
-        if note_size == "small" {
-            "SMALL — brief note, 15-30 lines depending on the topic. Key points only, no fluff."
-        } else {
-            "BIG — comprehensive and detailed. Full coverage of the topic."
-        },
-        hint_instruction,
-        covered_instruction,
-        examples,
-    );
-
-    println!(
-        "Sending request (Model: {}, Topic: \"{}\", style examples: {})...",
-        model, clean_topic, count
-    );
-
     let client = Client::new();
-    let start = Instant::now();
-    let res = client
-        .post(&api_url)
-        .json(&json!({
-            "model": model,
-            "prompt": prompt,
-            "stream": false
-        }))
-        .send()
-        .await?;
 
-    let elapsed = start.elapsed();
+    for topic in &args.topics {
+        let (clean_topic, user_hint) = topic
+            .find('(')
+            .and_then(|o| topic.rfind(')').map(|c| (o, c)))
+            .filter(|(o, c)| o < c)
+            .map(|(o, c)| {
+                (topic[..o].trim().to_string(), Some(topic[o + 1..c].trim().to_string()))
+            })
+            .unwrap_or((topic.clone(), None));
 
-    if !res.status().is_success() {
-        let status = res.status();
-        let body = res.text().await.unwrap_or_else(|_| "Failed to read response body".to_string());
-        eprintln!(
-            "Error: Ollama API returned non-success status: {}. Body: {}",
-            status, body
+        let hint_instruction = user_hint
+            .as_ref()
+            .map(|h| format!("- Additional instruction: {}\n", h))
+            .unwrap_or_default();
+
+        let covered_instruction = if use_covered && !covered_topics.is_empty() {
+            format!(
+                "- Restricted topics: {}. \
+                 Only use concepts from EXACTLY these topics. \
+                 Do NOT introduce anything outside this list.\n",
+                covered_topics.join(", ")
+            )
+        } else {
+            String::new()
+        };
+
+        let prompt = format!(
+            "You are a strict note-writing assistant. Follow ALL rules EXACTLY.\n\n\
+             RULES:\n\
+             - Write a note about: \"{}\"\n\
+             - Language: {}. Write ONLY in this language.\n\
+             - Size: {}\n\
+             {}\
+             {}\
+             - Use the examples below for STYLE ONLY (headings, lists, code blocks). \
+             DO NOT copy their length or depth — follow the size rule above.\n\
+             - OUTPUT ONLY THE NOTE. No greetings, no introductions, no conclusions, \
+             no commentary, no extra text.\n\n\
+             STYLE EXAMPLES:\n{}\n\n\
+             OUTPUT:",
+            clean_topic,
+            lang,
+            if note_size == "small" {
+                "SMALL — brief note, 15-30 lines depending on the topic. Key points only, no fluff."
+            } else {
+                "BIG — comprehensive and detailed. Full coverage of the topic."
+            },
+            hint_instruction,
+            covered_instruction,
+            examples,
         );
-        std::process::exit(1);
+
+        println!(
+            "[{}/{}] Sending request (Model: {}, Topic: \"{}\", style examples: {})...",
+            args.topics.iter().position(|t| t == topic).unwrap_or(0) + 1,
+            args.topics.len(),
+            model,
+            clean_topic,
+            count
+        );
+
+        let start = Instant::now();
+        let res = match client
+            .post(&api_url)
+            .json(&json!({
+                "model": model,
+                "prompt": prompt,
+                "stream": false
+            }))
+            .send()
+            .await
+        {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("Error: Request failed for \"{}\": {}", clean_topic, e);
+                continue;
+            }
+        };
+
+        let elapsed = start.elapsed();
+
+        if !res.status().is_success() {
+            let status = res.status();
+            let body = res.text().await.unwrap_or_else(|_| "Failed to read response body".to_string());
+            eprintln!("Error: Ollama API returned non-success status for \"{}\": {}. Body: {}", clean_topic, status, body);
+            continue;
+        }
+
+        let res_json: serde_json::Value = match res.json().await {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("Error: Failed to parse response JSON for \"{}\": {}", clean_topic, e);
+                continue;
+            }
+        };
+        let generated_text = res_json
+            .get("response")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .trim()
+            .to_string();
+
+        if generated_text.is_empty() {
+            eprintln!("Error: Ollama returned an empty response for \"{}\".", clean_topic);
+            continue;
+        }
+
+        let eval_count = res_json["eval_count"]
+            .as_u64()
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "N/A".to_string());
+
+        println!(
+            "  Took {} ms, generated tokens: {}",
+            elapsed.as_millis(),
+            eval_count
+        );
+
+        let safe_filename = clean_topic.replace(' ', "_").replace('/', "_");
+        let new_file_path = notes_path.join(format!("{}.md", safe_filename));
+
+        if let Err(e) = fs::write(&new_file_path, &generated_text) {
+            eprintln!("Error: Failed to write {}: {}", new_file_path.display(), e);
+            continue;
+        }
+        println!("  Saved: {}", new_file_path.display());
     }
-
-    let res_json: serde_json::Value = res.json().await?;
-    let generated_text = res_json
-        .get("response")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .trim()
-        .to_string();
-
-    if generated_text.is_empty() {
-        eprintln!("Error: Ollama returned an empty response field.");
-        std::process::exit(1);
-    }
-
-    let eval_count = res_json["eval_count"]
-        .as_u64()
-        .map(|v| v.to_string())
-        .unwrap_or_else(|| "N/A".to_string());
-
-    println!(
-        "Request took {} ms, generated tokens: {}",
-        elapsed.as_millis(),
-        eval_count
-    );
-
-    let safe_filename = clean_topic.replace(' ', "_").replace('/', "_");
-    let new_file_path = notes_path.join(format!("{}.md", safe_filename));
-
-    fs::write(&new_file_path, &generated_text)?;
-    println!("Success! New note saved to: {}", new_file_path.display());
 
     Ok(())
 }
