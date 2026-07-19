@@ -28,6 +28,7 @@ lang = "en"
 notes_dir = "~/work-notes"
 note_size = "big"
 notes_count = 10
+use_covered_topics = true
 
 # --- Profile: home ---
 [profile.home]
@@ -35,6 +36,7 @@ notes_dir = "~/personal-notes"
 note_size = "small"
 notes_count = 5
 model = "mistral"  # override global model for this profile
+use_covered_topics = false
 
 # --- Profile: server ---
 [profile.server]
