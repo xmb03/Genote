@@ -1,18 +1,18 @@
 <p align="center">
-  <img src="assets/logo.png" alt="Genote" width="300"/>
+  <img src="assets/logo.png" alt="Genote" width="600"/>
 </p>
 
 <h1 align="center">Genote</h1>
 
 <p align="center">
-  <a href="https://github.com/xmb03/Genote/releases"><img src="https://img.shields.io/github/v/release/xmb03/Genote?style=flat-square" alt="Release"></a>
-  <a href="https://github.com/xmb03/Genote/commits"><img src="https://img.shields.io/github/last-commit/xmb03/Genote?style=flat-square" alt="Last commit"></a>
+  <a href="https://github.com/xmb03/Genote/releases"><img src="https://img.shields.io/github/v/release/xmb03/Genote?style=flat-square&label=release" alt="Release"></a>
+  <a href="https://github.com/xmb03/Genote/commits"><img src="https://img.shields.io/github/last-commit/xmb03/Genote?style=flat-square&label=updated" alt="Last commit"></a>
   <a href="https://github.com/xmb03/Genote"><img src="https://img.shields.io/github/languages/top/xmb03/Genote?style=flat-square" alt="Language"></a>
   <a href="https://github.com/xmb03/Genote"><img src="https://img.shields.io/github/languages/code-size/xmb03/Genote?style=flat-square" alt="Code size"></a>
   <br>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
   <img src="https://img.shields.io/badge/Rust-1.84+-orange?style=flat-square" alt="Rust">
-  <a href="https://github.com/xmb03/Genote/actions"><img src="https://img.shields.io/github/actions/workflow/status/xmb03/Genote/.github/workflows/release.yml?style=flat-square" alt="Build"></a>
+  <a href="https://github.com/xmb03/Genote/actions"><img src="https://img.shields.io/github/actions/workflow/status/xmb03/Genote/release.yml?style=flat-square&label=build" alt="Build"></a>
 </p>
 
 <p align="center">
