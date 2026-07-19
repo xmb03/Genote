@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" alt="Genote" width="120"/>
+  <img src="assets/logo.png" alt="Genote" width="300"/>
 </p>
 
 <h1 align="center">Genote</h1>
