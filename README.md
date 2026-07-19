@@ -115,6 +115,12 @@ genote --use-covered-topics=false "Async Rust"
 
 # use fewer style examples
 genote -n 3 "Pattern matching"
+
+# generate multiple notes in one command
+genote "Rust Ownership" "Borrow Checker" "Smart Pointers"
+
+# each topic independently supports hints
+genote "Closures (skip FnOnce)" "Lifetimes (only elision)" "Generics (no traits)"
 ```
 
 The generated note appears as a new `.md` file in your notes directory.
