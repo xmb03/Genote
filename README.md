@@ -48,7 +48,11 @@ Copy the example config and adjust it to your environment:
 cp config.toml.example config.toml
 ```
 
-Edit `config.toml`:
+Edit `config.toml`.
+
+### Flat config (simple)
+
+All fields at the root level:
 
 | Field               | Description                                          |
 |---------------------|------------------------------------------------------|
@@ -59,6 +63,38 @@ Edit `config.toml`:
 | `note_size`         | `small` for concise notes or `big` for detailed ones |
 | `notes_count`       | How many example notes to use (default 7)            |
 | `use_covered_topics` | `true` — the model uses only concepts from existing note filenames. Default `false` |
+
+### Profiles (multiple environments)
+
+Define multiple profiles in `config.toml` and switch between them with `--profile`:
+
+```toml
+default = "work"
+
+# global defaults applied to every profile
+model = "llama3"
+api_url = "http://127.0.0.1:11434/api/generate"
+lang = "en"
+
+[profile.work]
+notes_dir = "~/work-notes"
+note_size = "big"
+
+[profile.home]
+notes_dir = "~/personal-notes"
+note_size = "small"
+model = "mistral"
+```
+
+```bash
+# uses default profile ("work")
+genote "Rust ownership"
+
+# switch to home profile
+genote --profile home "Async Rust"
+```
+
+Global fields at root level serve as defaults for all profiles. Profile fields override them. CLI flags override everything.
 
 You need at least one `.md` file in your notes directory for genote to learn your writing style.
 
@@ -96,6 +132,7 @@ Every config option can be overridden via the command line:
 | `-s`, `--note-size <size>`    | `note_size`          |
 | `-n`, `--notes-count <n>`     | `notes_count`        |
 | `--use-covered-topics <bool>` | `use_covered_topics` |
+| `--profile <name>`           | profile selection    |
 
 ```bash
 genote --help

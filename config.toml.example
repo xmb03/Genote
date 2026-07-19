@@ -1,28 +1,44 @@
-# Which model to use in Ollama. Run `ollama list` to see available models.
-model = "your-model-name"
+# =============================================================================
+# Flat config (simple) — all settings at root level.
+# Uncomment and adjust if you don't need profiles.
+# =============================================================================
+# model = "your-model-name"
+# api_url = "http://127.0.0.1:11434/api/generate"
+# notes_dir = "~/path/to/your/notes"
+# lang = "en"
+# note_size = "small"
+# notes_count = 7
+# use_covered_topics = false
 
-# Ollama API endpoint. Usually http://127.0.0.1:11434/api/generate
-# Change the IP/port if Ollama runs on another machine.
+# =============================================================================
+# Profile-based config — define multiple environments.
+# Global fields at root level apply to ALL profiles as defaults.
+# =============================================================================
+
+# Default profile used when --profile is not passed on CLI
+default = "work"
+
+# Global defaults (applied to every profile before merging profile-specific values)
+model = "llama3"
 api_url = "http://127.0.0.1:11434/api/generate"
-
-# Path to your folder with existing .md notes.
-# The tool reads these to learn your writing style.
-# Supports ~/ for home directory.
-notes_dir = "~/path/to/your/notes"
-
-# Language for the generated note: "en", "ru", "de", etc.
 lang = "en"
 
-# How detailed the note should be:
-#   "small" — short and to the point
-#   "big"   — comprehensive and detailed
+# --- Profile: work ---
+[profile.work]
+notes_dir = "~/work-notes"
+note_size = "big"
+notes_count = 10
+
+# --- Profile: home ---
+[profile.home]
+notes_dir = "~/personal-notes"
 note_size = "small"
+notes_count = 5
+model = "mistral"  # override global model for this profile
 
-# Max number of example notes to use as style reference (optional, default 7)
-notes_count = 7
-
-# If true, the model will be constrained to only use concepts from topics
-# whose filenames (without .md) exist in the notes_dir.
-# The model will NOT introduce concepts from topics outside this list.
-# (optional, default false)
-# use_covered_topics = true
+# --- Profile: server ---
+[profile.server]
+api_url = "http://192.168.1.50:11434/api/generate"
+notes_dir = "~/server-notes"
+lang = "ru"
+note_size = "big"
