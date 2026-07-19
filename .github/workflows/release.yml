@@ -28,11 +28,8 @@ jobs:
         with:
           files: genote-*.tar.gz
           body: |
-            See the [README](https://github.com/xmb03/Genote#readme) for setup instructions.
-
             ### Changes in ${{ github.ref_name }}
-            - All config options are now overridable via CLI flags (`--model`, `--api-url`, `--notes-dir`, `--lang`, `--note-size`, `--notes-count`, `--use-covered-topics`).
-            - `--note-size small` now targets 15-30 lines (was 3-5 sentences).
-            - Optional `(hint)` in the topic argument lets you pass extra instructions to the model without affecting the filename.
-            - Strict prompt rewrite: model no longer copies example length, follows size instruction precisely.
-            - Added `clap` for robust CLI argument parsing with `--help`.
+            - **Profiles** — `[profile.xxx]` sections in `config.toml` with multi-field inheritance: global defaults → profile → CLI flags.
+            - `--profile` flag to select a profile at runtime.
+            - **Slimmer codebase** — core logic reduced by 20% (397 → 318 lines): unified config merge, single-pass directory scan, reusable validation helper.
+            - See `config.toml.example` for profile syntax and flat-mode setup.
