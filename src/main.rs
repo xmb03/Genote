@@ -244,11 +244,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
              - OUTPUT ONLY THE NOTE. No greetings, no introductions, no conclusions, \
              no commentary, no extra text.\n\n\
              STYLE EXAMPLES:\n{}\n\n\
+             REMINDER: 25-30 LINES ONLY. VERIFY COUNT BEFORE OUTPUT.\n\n\
              OUTPUT:",
             clean_topic,
             lang,
             if note_size == "small" {
-                "SMALL — brief note, 15-30 lines depending on the topic. Key points only, no fluff."
+                "SMALL — HARD LIMIT: EXACTLY 25-30 LINES.\n             - LINE BUDGET: 25-30 lines total. One idea per line, compact. Count lines as you write. Stop at 30 even if unfinished. Key points only, no fluff."
             } else {
                 "BIG — comprehensive and detailed. Full coverage of the topic."
             },
@@ -322,6 +323,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             elapsed.as_millis(),
             eval_count
         );
+
+        if note_size == "small" {
+            let line_count = generated_text.lines().count();
+            if line_count < 25 || line_count > 30 {
+                eprintln!(
+                    "Warning: \"{}\" has {} lines (expected 25-30). Model exceeded limit.",
+                    clean_topic, line_count
+                );
+            }
+        }
 
         let safe_filename = clean_topic.replace(' ', "_").replace('/', "_");
         let new_file_path = notes_path.join(format!("{}.md", safe_filename));
