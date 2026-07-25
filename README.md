@@ -77,6 +77,19 @@ curl -L https://github.com/xmb03/Genote/releases/latest/download/genote-linux-x8
 sudo mv genote /usr/local/bin/
 ```
 
+### Arch Linux (AUR)
+
+```bash
+yay -S genote        # from source
+yay -S genote-bin    # pre-compiled binary
+```
+
+Also available in [Paru](https://github.com/Morganamilo/paru):
+
+```bash
+paru -S genote
+```
+
 ## Setup
 
 Copy the example config and adjust it to your environment:
