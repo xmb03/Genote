@@ -90,6 +90,80 @@ Also available in [Paru](https://github.com/Morganamilo/paru):
 paru -S genote
 ```
 
+### NixOS / Home Manager (Flake)
+
+Add to your flake inputs:
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    genote.url = "github:xmb03/Genote";  # or path: /path/to/Genote for local
+  };
+
+  outputs = { self, nixpkgs, genote, ... }:
+    let
+      system = "x86_64-linux";
+      pkgs = nixpkgs.legacyPackages.${system};
+    in {
+      nixosConfigurations.your-host = nixpkgs.lib.nixosSystem {
+        system = system;
+        modules = [
+          genote.nixosModules.default
+          ({ inputs, ... }: {
+            programs.genote = {
+              enable = true;
+              settings = {
+                model = "llama3";
+                notes_dir = "/home/youruser/notes";
+                lang = "ru";
+                note_size = "small";
+                use_covered_topics = true;
+              };
+            };
+          })
+        ];
+      };
+
+      # Or for Home Manager (standalone or within NixOS)
+      homeConfigurations."youruser" = pkgs.home-manager.lib.homeManagerConfiguration {
+        pkgs = pkgs;
+        modules = [
+          genote.homeManagerModules.default
+          ({ inputs, ... }: {
+            programs.genote = {
+              enable = true;
+              settings = {
+                model = "llama3";
+                notes_dir = "~/notes";
+                lang = "ru";
+                note_size = "small";
+                use_covered_topics = true;
+              };
+            };
+          })
+        ];
+      };
+    };
+}
+```
+
+Then rebuild:
+
+```bash
+# NixOS
+sudo nixos-rebuild switch --flake .#your-host
+
+# Home Manager (standalone)
+home-manager switch --flake .#youruser
+```
+
+The `genote` binary will be in PATH. Config is generated at:
+- **Home Manager**: `~/.config/genote/config.toml` (XDG)
+- **NixOS**: `/etc/genote/config.toml` (system-wide)
+
+Example configs: [`home-manager-example.nix`](home-manager-example.nix) / [`nixos-example.nix`](nixos-example.nix)
+
 ## Setup
 
 Copy the example config and adjust it to your environment:
