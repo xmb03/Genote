@@ -56,6 +56,14 @@ When `use_covered_topics = true`, genote collects the filenames of your existing
 
 ## Installation
 
+### From crates.io
+
+Requires [Rust](https://rustup.rs).
+
+```bash
+cargo install genote
+```
+
 ### From source
 
 Requires [Rust](https://rustup.rs).
