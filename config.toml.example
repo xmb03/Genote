@@ -9,6 +9,7 @@
 # note_size = "small"
 # notes_count = 7
 # use_covered_topics = false
+# weak_mode = true       # two-stage generation for models <15B. Slower, better style cloning.
 
 # =============================================================================
 # Profile-based config — define multiple environments.
@@ -44,3 +45,19 @@ api_url = "http://192.168.1.50:11434/api/generate"
 notes_dir = "~/server-notes"
 lang = "ru"
 note_size = "big"
+
+# =============================================================================
+# Logging — controls what gets printed to stdout.
+# Simple toggle:   log = true
+# Fine-grained:    [log]
+#                    prompt   = false   # hide prompts sent to the model
+#                    response = true    # show model responses
+#                    status   = true    # show progress messages
+#                    timing   = true    # show timing/token info
+#
+# Default (no [log]): status + timing shown, prompt/response hidden.
+# log = true:          everything shown.
+# log = false:         nothing shown (except errors).
+# =============================================================================
+# log = { prompt = false, response = false }   # only status + timing
+weak_mode = true      # two-stage for small models on this host

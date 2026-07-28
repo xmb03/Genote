@@ -26,6 +26,7 @@ No test, lint, format, or typecheck commands exist — `cargo build` is the only
   ```
 - `use_covered_topics`: reads `.md` filenames in `notes_dir`, strips extension, replaces `_` with spaces → passed as topic restrictions.
 - `note_size` must be exactly `small` (15–30 lines) or `big` (comprehensive).
+- `weak_mode` enables two-stage generation via `/api/chat` (style analysis → note generation). Uses `weak_mode` CLI flag or `weak_mode = true` in config.
 
 ## Architecture
 
@@ -33,6 +34,7 @@ No test, lint, format, or typecheck commands exist — `cargo build` is the only
 - Unsorted `.md` files in `notes_dir` used as style examples (up to `notes_count`, default 7).
 - Output saved to `notes_dir/{topic_slug}.md` (spaces/slashes → underscores).
 - Depends on **Ollama** running at `api_url` (default `http://127.0.0.1:11434/api/generate`).
+- Weak mode uses `/api/chat` (auto-derived from `api_url` by replacing path).
 
 ## CI / release
 

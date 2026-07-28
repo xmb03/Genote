@@ -32,6 +32,9 @@
 - **CLI overrides** — every config option can be overridden inline: `-s big -l ru`
 - **Language control** — generate notes in any language (`en`, `ru`, etc.)
 - **Size control** — `small` (15–30 lines) or `big` (comprehensive)
+- **Weak-mode for small models** — two-stage generation (`--weak-mode`) for models under 15B parameters. First analyzes your style, then writes the note in the same chat session. Slower but produces accurate style cloning
+- **Logging control** — configure output verbosity: `log = true` for full debugging, `[log] prompt = false` to hide prompts, or suppress all non-error output
+- **Issue prompt** — on any error, optionally open a pre‑filled GitHub issue to report bugs (`GENOTE_NO_ISSUE=1` to suppress)
 - **Progress & timing** — see `[2/3] Sending request…` + elapsed time and token count per note
 - **Graceful error handling** — one topic failing doesn't stop the rest of the batch
 - **`~` expansion** — use `~/notes` in paths, home dir is resolved automatically
@@ -48,6 +51,8 @@
 Genote reads your existing `.md` notes from a directory, sends them as style examples to an Ollama model, and generates a new note on the topic you specify. The more example notes you have, the better it matches your writing style.
 
 When `use_covered_topics = true`, genote collects the filenames of your existing notes and tells the model to only use concepts from those covered topics. This prevents the model from introducing material you haven't studied yet.
+
+When `--weak-mode` is enabled, genote splits generation into two stages sent to the same chat session. First it asks the model to analyze the style of your example notes. Then it generates the new note based on that analysis. This helps smaller models (under 15B parameters) follow formatting rules more accurately, since they don't have to process examples and write the note at the same time.
 
 ## Prerequisites
 
@@ -195,6 +200,8 @@ All fields at the root level:
 | `note_size` | `small` for 15–30 lines or `big` for comprehensive |
 | `notes_count` | How many example notes to use (default 7) |
 | `use_covered_topics` | `true` — the model uses only concepts from existing note filenames. Default `false` |
+| `weak_mode` | `true` — two-stage generation for models under 15B. Slower but better style cloning. Default `false` |
+| `log` | Logging: `true` (all), `false` (errors only), or `{ prompt, response, status, timing }` for fine control |
 
 ### Profiles (multiple environments)
 
@@ -232,6 +239,43 @@ genote --profile home "Async Rust"
 
 You need at least one `.md` file in your notes directory for genote to learn your writing style.
 
+### Logging
+
+Control what genote prints to stdout:
+
+| Config | Effect |
+|--------|--------|
+| _(no `[log]` section)_ | Status + timing shown, prompts/responses hidden |
+| `log = true` | Everything (prompts, responses, status, timing) |
+| `log = false` | Only errors |
+| `[log] prompt = false` | Everything except prompts |
+
+Categories:
+
+| Field | Description |
+|-------|-------------|
+| `prompt` | The full instruction sent to the model |
+| `response` | The model's generated note text |
+| `status` | Progress messages (`Sending request…`, `Saved: …`) |
+| `timing` | Elapsed time and token count per note |
+
+Works in both flat and profile mode:
+
+```toml
+# flat
+[log]
+prompt = false
+response = true
+status = true
+timing = true
+
+# or per-profile
+[profile.work]
+note_size = "big"
+[profile.work.log]
+prompt = false
+```
+
 ### Config lookup order
 
 1. Next to the binary (`target/release/config.toml`)
@@ -260,6 +304,12 @@ genote --use-covered-topics=false "Async Rust"
 
 # use fewer style examples
 genote -n 3 "Pattern matching"
+
+# weak-mode for models under 15B — two-stage generation, better style cloning
+genote --weak-mode "Rust Ownership"
+
+# weak-mode with all other options
+genote --weak-mode -s big -l ru "Borrow Checker"
 ```
 
 The generated note appears as a new `.md` file in your notes directory. Spaces and slashes in the topic name are replaced with underscores (e.g. `Rust Ownership` → `Rust_Ownership.md`).
@@ -288,6 +338,7 @@ Every config option can be overridden via the command line:
 | `-s`, `--note-size <size>` | `note_size` |
 | `-n`, `--notes-count <n>` | `notes_count` |
 | `--use-covered-topics <bool>` | `use_covered_topics` |
+| `--weak-mode` | `weak_mode` (flag, no value needed) |
 | `--profile <name>` | profile selection |
 
 ```bash

@@ -17,10 +17,14 @@
       note_size = "small";
       notes_count = 7;
       use_covered_topics = true;
+      weak_mode = true;
+
+      # log = true;                                # show everything
+      # log = { prompt = false; response = true; } # hide prompts, show responses
 
       # default = "work";
       # profile = {
-      #   work = { notes_dir = "/home/user/work-notes"; note_size = "big"; };
+      #   work = { notes_dir = "/home/user/work-notes"; note_size = "big"; weak_mode = true; };
       #   personal = { notes_dir = "/home/user/personal-notes"; lang = "ru"; note_size = "small"; model = "mistral"; };
       # };
     };

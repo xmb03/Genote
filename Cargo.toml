@@ -1,6 +1,6 @@
 [package]
 name = "genote"
-version = "0.3.4"
+version = "0.3.5"
 edition = "2021"
 description = "CLI tool that reads your existing .md notes as style examples and generates new notes on any topic using Ollama"
 license = "MIT"
@@ -17,3 +17,4 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8"
 clap = { version = "4", features = ["derive"] }
+urlencoding = "2"

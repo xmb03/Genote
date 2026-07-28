@@ -29,8 +29,8 @@ jobs:
           files: genote-*.tar.gz
           body: |
             ### Changes in ${{ github.ref_name }}
-            - **Multi-topic mode** — generate several notes in one command: `genote "Topic A" "Topic B" "Topic C"`.
-            - **Sequential generation** — each note is a fresh Ollama request with full context reset, no context bleed.
-            - Each topic independently supports `(hint)` syntax.
-            - Errors in one topic don't interrupt the rest of the batch.
-            - Progress indicator `[N/M]` per note.
+            - **GitHub issue prompt** — on any error, prompts `[y/N]` to open a pre‑filled issue at github.com/xmb03/Genote/issues/new (suppress with `GENOTE_NO_ISSUE=1`)
+            - **Weak mode** — two‑stage generation (`--weak-mode`) for models <15B. Analyzes your style first, then writes the note. Slower but accurate style cloning
+            - **Logging control** — configure verbosity per‑category: `log = true`, `log = false`, or `[log] prompt = false`
+            - **NixOS / Home Manager flake** — system‑wide or per‑user declarative config
+            - **crates.io** — `cargo install genote`

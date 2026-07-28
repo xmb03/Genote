@@ -8,7 +8,18 @@
     note_size = lib.mkOption { type = lib.types.enum [ "small" "big" ]; default = "small"; description = "Note size: small (25-30 lines) or big (comprehensive)"; };
     notes_count = lib.mkOption { type = lib.types.int; default = 7; description = "Number of example notes to use"; };
     use_covered_topics = lib.mkOption { type = lib.types.bool; default = false; description = "Restrict model to concepts from existing note filenames"; };
-    default = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; description = "Default profile name when --profile not specified"; };
-    profile = lib.mkOption { type = lib.types.attrsOf (lib.types.submodule { options = import ./config-options.nix { inherit lib; }; }); default = { }; description = "Profile configurations (e.g. work, home, server)"; };
-  };
+    weak_mode = lib.mkOption { type = lib.types.bool; default = false; description = "Two-stage generation for models <15B. Slower, better style cloning"; };
+    log = lib.mkOption {
+      type = lib.types.nullOr lib.types.anything;
+      default = null;
+      description = ''
+        Logging control. Three modes:
+        - `true` — show everything (prompts, responses, status, timing)
+        - `false` — suppress all non-error output
+        - attrset e.g. `{ prompt = false; response = true; }` — per-category control
+      '';
+      example = { prompt = false; response = true; };
+    };
+    default = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; description = "Default profile name when --profile not specified";
+};
 }

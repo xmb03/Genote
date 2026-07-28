@@ -18,7 +18,7 @@
           lib = pkgs.lib;
           genote = pkgs.rustPlatform.buildRustPackage rec {
             pname = "genote";
-            version = "0.3.3";
+            version = "0.3.5";
             src = lib.cleanSourceWith {
               filter = f: t: t != "target" && t != ".git" && t != ".playwright-mcp" && t != ".opencode/node_modules";
               src = self;
