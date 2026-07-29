@@ -4,3 +4,6 @@ config.toml
 main
 .DS_Store
 Thumbs.db
+error.md
+AGENTS.md
+.opencode/

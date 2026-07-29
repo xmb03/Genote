@@ -6,7 +6,7 @@ description = "CLI tool that reads your existing .md notes as style examples and
 license = "MIT"
 repository = "https://github.com/xmb03/Genote"
 readme = "README.md"
-keywords = ["ollama", "openai", "anthropic", "gemini", "notes", "study", "llm", "cli", "cross-platform"]
+keywords = ["ollama", "notes", "study", "llm", "cli"]
 categories = ["command-line-utilities", "development-tools"]
 exclude = ["config.toml", "*.un~", "assets/*", "*.nix", ".*"]
 
