@@ -37,8 +37,3 @@ jobs:
             ### Changes in ${{ github.ref_name }}
             - **Cross‑platform builds** — Linux, macOS, Windows
             - **Multi‑provider + API keyring** — Ollama, OpenAI, Anthropic, Gemini, llama.cpp; keys stored in OS keychain
-            - **GitHub issue prompt** — on any error, prompts `[y/N]` to open a pre‑filled issue at github.com/xmb03/Genote/issues/new (suppress with `GENOTE_NO_ISSUE=1`)
-            - **Weak mode** — two‑stage generation (`--weak-mode`) for models <15B. Analyzes your style first, then writes the note. Slower but accurate style cloning
-            - **Logging control** — configure verbosity per‑category: `log = true`, `log = false`, or `[log] prompt = false`
-            - **NixOS / Home Manager flake** — system‑wide or per‑user declarative config
-            - **crates.io** — `cargo install genote`
