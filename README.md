@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  Generate IT study notes using local LLMs via Ollama.<br>
+  Generate IT study notes using local LLMs and cloud APIs.<br>
   Feed it a topic and a few example notes — it writes a new one in your style.
 </p>
 
@@ -24,6 +24,9 @@
 
 ## Features
 
+- **Multi-provider** — Ollama (local), OpenAI-compatible (vLLM, DeepSeek, OpenRouter, GitHub Models), Anthropic Claude, Google Gemini, llama.cpp. Switch via `--provider` or `config.toml`
+- **Encrypted API keys** — store cloud API keys in your OS keyring (macOS Keychain, Windows Credential Manager, Linux Secret Service). Set once with `--api-key`, never touched again
+- **Cross‑platform** — runs on Linux, macOS, and Windows
 - **Multi-topic batch** — generate several notes at once: `genote "Rust" "Go" "Python"`
 - **Style learning** — reads your existing `.md` notes and mimics their structure (headings, lists, code blocks)
 - **Covered-topics restriction** — limit the model to concepts you've already studied (`use_covered_topics = true`)
@@ -48,7 +51,7 @@
 
 ## How it works
 
-Genote reads your existing `.md` notes from a directory, sends them as style examples to an Ollama model, and generates a new note on the topic you specify. The more example notes you have, the better it matches your writing style.
+Genote reads your existing `.md` notes from a directory, sends them as style examples to an LLM, and generates a new note on the topic you specify. It supports Ollama, OpenAI-compatible APIs, Anthropic Claude, Google Gemini, and llama.cpp — local or cloud. The more example notes you have, the better it matches your writing style.
 
 When `use_covered_topics = true`, genote collects the filenames of your existing notes and tells the model to only use concepts from those covered topics. This prevents the model from introducing material you haven't studied yet.
 
@@ -56,8 +59,12 @@ When `--weak-mode` is enabled, genote splits generation into two stages sent to 
 
 ## Prerequisites
 
-- [Ollama](https://ollama.ai) running locally (or remotely)
-- A model pulled in Ollama (e.g. `gemma`, `llama3`, `mistral`)
+Depending on your provider:
+- **Ollama** — [Ollama](https://ollama.ai) running locally with a model pulled (`gemma`, `llama3`, etc.)
+- **OpenAI-compatible** — an endpoint (vLLM, DeepSeek, OpenRouter, GitHub Models) + `api_key`
+- **Anthropic Claude** — `api_key` (stored in OS keyring via `--api-key`)
+- **Google Gemini** — `api_key` (stored in OS keyring via `--api-key`)
+- **llama.cpp** — llama.cpp server running
 
 ## Installation
 
@@ -83,11 +90,21 @@ The binary will be at `target/release/genote`.
 
 ### Binary download
 
-Grab the latest binary from the [Releases page](https://github.com/xmb03/Genote/releases).
+Grab the latest binary for your platform from the [Releases page](https://github.com/xmb03/Genote/releases).
 
 ```bash
-curl -L https://github.com/xmb03/Genote/releases/latest/download/genote-linux-x86_64.tar.gz | tar xz
+# Linux x86_64
+curl -L https://github.com/xmb03/Genote/releases/latest/download/genote-x86_64-unknown-linux-gnu.tar.gz | tar xz
 sudo mv genote /usr/local/bin/
+
+# macOS (Apple Silicon)
+curl -L https://github.com/xmb03/Genote/releases/latest/download/genote-aarch64-apple-darwin.tar.gz | tar xz
+sudo mv genote /usr/local/bin/
+
+# Windows (x86_64) — run in PowerShell
+curl -LO https://github.com/xmb03/Genote/releases/latest/download/genote-x86_64-pc-windows-msvc.tar.gz
+tar xzf genote-x86_64-pc-windows-msvc.tar.gz
+# Move genote.exe to a folder in your PATH
 ```
 
 ### Arch Linux (AUR)
@@ -193,11 +210,13 @@ All fields at the root level:
 
 | Field | Description |
 |---|---|
-| `model` | The Ollama model to use (e.g. `gemma3`, `llama3`) |
-| `api_url` | Your Ollama API endpoint |
+| `provider` | API backend: `ollama` (default), `openai`, `llamacpp`, `anthropic`, `gemini` |
+| `model` | Model name (e.g. `gemma3`, `llama3`, `gpt-4o`, `claude-sonnet-4`) |
+| `api_url` | Your API endpoint (e.g. `http://127.0.0.1:11434` for Ollama) |
+| `api_key` | Set via `--api-key` (stored in OS keyring, not in config file) |
 | `notes_dir` | Directory containing your existing `.md` notes |
 | `lang` | Language for the generated note (`en`, `ru`, etc.) |
-| `note_size` | `small` for 15–30 lines or `big` for comprehensive |
+| `note_size` | `small` for 25–30 lines or `big` for comprehensive |
 | `notes_count` | How many example notes to use (default 7) |
 | `use_covered_topics` | `true` — the model uses only concepts from existing note filenames. Default `false` |
 | `weak_mode` | `true` — two-stage generation for models under 15B. Slower but better style cloning. Default `false` |
@@ -212,7 +231,7 @@ default = "work"
 
 # global defaults applied to every profile
 model = "llama3"
-api_url = "http://127.0.0.1:11434/api/generate"
+api_url = "http://127.0.0.1:11434"
 lang = "en"
 
 [profile.work]
@@ -279,7 +298,10 @@ prompt = false
 ### Config lookup order
 
 1. Next to the binary (`target/release/config.toml`)
-2. Current working directory (`./config.toml`)
+2. **Linux**: `~/.config/Genote/config.toml`
+3. **macOS**: `~/Library/Application Support/Genote/config.toml`
+4. **Windows**: `%APPDATA%\Genote\config.toml`
+5. Current working directory (`./config.toml`)
 
 ## Usage
 
@@ -292,6 +314,12 @@ genote "Rust Ownership" "Borrow Checker" "Smart Pointers"
 
 # override size and language inline
 genote -s big -l en "Rust ownership"
+
+# use an OpenAI-compatible provider (vLLM, DeepSeek, OpenRouter, etc.)
+genote -p openai -m gpt-4o "Rust ownership"
+
+# set API key (stored in OS keyring, one-time)
+genote --api-key "sk-..." "Rust ownership"
 
 # pass extra instructions to the model — not included in filename
 genote "Borrow checker (only &mut, skip &)"
@@ -333,12 +361,14 @@ Every config option can be overridden via the command line:
 |---|---|
 | `-m`, `--model <name>` | `model` |
 | `--api-url <url>` | `api_url` |
+| `-p`, `--provider <name>` | `provider` |
+| `--api-key [key]` | `api_key` (no value = interactive prompt) |
 | `-d`, `--notes-dir <dir>` | `notes_dir` |
 | `-l`, `--lang <lang>` | `lang` |
 | `-s`, `--note-size <size>` | `note_size` |
 | `-n`, `--notes-count <n>` | `notes_count` |
 | `--use-covered-topics <bool>` | `use_covered_topics` |
-| `--weak-mode` | `weak_mode` (flag, no value needed) |
+| `--weak-mode [bool]` | `weak_mode` |
 | `--profile <name>` | profile selection |
 
 ```bash

@@ -1,9 +1,29 @@
 # =============================================================================
+# Provider — API backend. Options:
+#   "ollama"    Ollama (default). URL example: http://127.0.0.1:11434
+#   "openai"    OpenAI-compatible: vLLM, LM Studio, Together, DeepSeek,
+#               OpenRouter, GitHub Models, etc.
+#               URL example: http://127.0.0.1:8000
+#   "llamacpp"  llama.cpp server (native /completion endpoint).
+#               URL example: http://127.0.0.1:8080
+#   "anthropic" Anthropic Claude. URL: https://api.anthropic.com
+#               Requires api_key (stored in system keyring via --api-key)
+#   "gemini"    Google Gemini. URL: https://generativelanguage.googleapis.com
+#               Requires api_key
+# =============================================================================
+# provider = "ollama"
+
+# API key is stored in your system keyring (not in this file).
+# Set:           genote --api-key "sk-..."
+# Reset/prompt:  genote --api-key
+# First run      (no key found) → prompts interactively.
+
+# =============================================================================
 # Flat config (simple) — all settings at root level.
 # Uncomment and adjust if you don't need profiles.
 # =============================================================================
 # model = "your-model-name"
-# api_url = "http://127.0.0.1:11434/api/generate"
+# api_url = "http://127.0.0.1:11434"
 # notes_dir = "~/path/to/your/notes"
 # lang = "en"
 # note_size = "small"
@@ -21,7 +41,8 @@ default = "work"
 
 # Global defaults (applied to every profile before merging profile-specific values)
 model = "llama3"
-api_url = "http://127.0.0.1:11434/api/generate"
+api_url = "http://127.0.0.1:11434"
+provider = "ollama"
 lang = "en"
 
 # --- Profile: work ---
@@ -41,10 +62,63 @@ use_covered_topics = false
 
 # --- Profile: server ---
 [profile.server]
-api_url = "http://192.168.1.50:11434/api/generate"
+api_url = "http://192.168.1.50:11434"
 notes_dir = "~/server-notes"
 lang = "ru"
 note_size = "big"
+
+# --- Profile: vllm (OpenAI-compatible) ---
+[profile.vllm]
+model = "mistral"
+api_url = "http://192.168.1.100:8000"
+provider = "openai"
+notes_dir = "~/vllm-notes"
+note_size = "big"
+
+# --- Profile: deepseek (OpenAI-compatible) ---
+[profile.deepseek]
+model = "deepseek-chat"
+api_url = "https://api.deepseek.com"
+provider = "openai"
+notes_dir = "~/deepseek-notes"
+lang = "en"
+note_size = "small"
+
+# --- Profile: openrouter (OpenAI-compatible) ---
+[profile.openrouter]
+model = "openai/gpt-4o"     # or "anthropic/claude-sonnet-4", etc.
+api_url = "https://openrouter.ai"
+provider = "openai"
+notes_dir = "~/or-notes"
+lang = "en"
+note_size = "small"
+
+# --- Profile: github-models (OpenAI-compatible) ---
+[profile.github]
+model = "gpt-4o"
+api_url = "https://models.inference.ai.azure.com"
+provider = "openai"
+notes_dir = "~/gh-notes"
+lang = "en"
+note_size = "small"
+
+# --- Profile: anthropic ---
+[profile.anthropic]
+model = "claude-sonnet-4-20250514"
+api_url = "https://api.anthropic.com"
+provider = "anthropic"
+notes_dir = "~/claude-notes"
+lang = "en"
+note_size = "small"
+
+# --- Profile: gemini ---
+[profile.gemini]
+model = "gemini-2.0-flash"
+api_url = "https://generativelanguage.googleapis.com"
+provider = "gemini"
+notes_dir = "~/gemini-notes"
+lang = "en"
+note_size = "small"
 
 # =============================================================================
 # Logging — controls what gets printed to stdout.

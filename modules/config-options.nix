@@ -1,8 +1,9 @@
 { lib, ... }:
 {
   options = {
-    model = lib.mkOption { type = lib.types.str; description = "Ollama model name (e.g. llama3, mistral, gemma3)"; example = "llama3"; };
-    api_url = lib.mkOption { type = lib.types.str; default = "http://127.0.0.1:11434/api/generate"; description = "Ollama API endpoint"; };
+    provider = lib.mkOption { type = lib.types.enum [ "ollama" "openai" "llamacpp" "anthropic" "gemini" ]; default = "ollama"; description = "API provider"; };
+    model = lib.mkOption { type = lib.types.str; description = "Model name (e.g. llama3, gpt-4o, claude-sonnet-4, gemini-2.0-flash)"; example = "llama3"; };
+    api_url = lib.mkOption { type = lib.types.str; default = "http://127.0.0.1:11434"; description = "API endpoint (base URL without path suffix)"; };
     notes_dir = lib.mkOption { type = lib.types.path; description = "Directory containing existing .md notes for style examples"; example = "~/notes"; };
     lang = lib.mkOption { type = lib.types.str; default = "en"; description = "Language for generated notes (en, ru, etc.)"; };
     note_size = lib.mkOption { type = lib.types.enum [ "small" "big" ]; default = "small"; description = "Note size: small (25-30 lines) or big (comprehensive)"; };

@@ -10,8 +10,9 @@
   programs.genote = {
     enable = true;
     settings = {
+      provider = "ollama";
       model = "llama3";
-      api_url = "http://127.0.0.1:11434/api/generate";
+      api_url = "http://127.0.0.1:11434";
       notes_dir = "~/notes";
       lang = "ru";
       note_size = "small";
@@ -26,7 +27,8 @@
       # profile = {
       #   work = { notes_dir = "~/work-notes"; note_size = "big"; notes_count = 10; use_covered_topics = true; weak_mode = true; };
       #   personal = { notes_dir = "~/personal-notes"; lang = "ru"; note_size = "small"; model = "mistral"; use_covered_topics = false; };
-      #   server = { api_url = "http://192.168.1.50:11434/api/generate"; notes_dir = "~/server-notes"; lang = "ru"; note_size = "big"; };
+      #   server = { api_url = "http://192.168.1.50:11434"; notes_dir = "~/server-notes"; lang = "ru"; note_size = "big"; };
+      #   cloud = { provider = "openai"; model = "gpt-4o"; api_url = "https://api.openai.com"; notes_dir = "~/cloud-notes"; };
       # };
     };
   };

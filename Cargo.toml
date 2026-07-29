@@ -1,12 +1,12 @@
 [package]
 name = "genote"
-version = "0.3.5"
+version = "0.4.1"
 edition = "2021"
-description = "CLI tool that reads your existing .md notes as style examples and generates new notes on any topic using Ollama"
+description = "CLI tool that reads your existing .md notes as style examples and generates new notes on any topic using local LLMs and cloud APIs"
 license = "MIT"
 repository = "https://github.com/xmb03/Genote"
 readme = "README.md"
-keywords = ["ollama", "notes", "study", "llm", "cli"]
+keywords = ["ollama", "openai", "anthropic", "gemini", "notes", "study", "llm", "cli", "cross-platform"]
 categories = ["command-line-utilities", "development-tools"]
 exclude = ["config.toml", "*.un~", "assets/*", "*.nix", ".*"]
 
@@ -18,3 +18,5 @@ serde_json = "1.0"
 toml = "0.8"
 clap = { version = "4", features = ["derive"] }
 urlencoding = "2"
+keyring = "3"
+rpassword = "7"

@@ -1,5 +1,7 @@
 use clap::Parser;
+use keyring::Entry;
 use reqwest::Client;
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashMap;
@@ -9,10 +11,17 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::Instant;
 
+mod provider;
+use provider::Provider;
+
+const KEYRING_SERVICE: &str = "genote";
+const KEYRING_USER: &str = "api_key";
+
 #[derive(Deserialize, Clone, Default)]
 struct ConfigValues {
     model: Option<String>,
     api_url: Option<String>,
+    provider: Option<String>,
     notes_dir: Option<String>,
     lang: Option<String>,
     note_size: Option<String>,
@@ -91,7 +100,7 @@ struct ConfigFile {
 }
 
 #[derive(Parser)]
-#[command(about = "Generate IT study notes using Ollama")]
+#[command(about = "Generate IT study notes using local LLMs")]
 struct Args {
     #[arg(required = true)]
     topics: Vec<String>,
@@ -101,6 +110,9 @@ struct Args {
 
     #[arg(long = "api-url")]
     api_url: Option<String>,
+
+    #[arg(short = 'p', long = "provider")]
+    provider: Option<String>,
 
     #[arg(short = 'd', long = "notes-dir")]
     notes_dir: Option<String>,
@@ -117,16 +129,23 @@ struct Args {
     #[arg(long = "use-covered-topics")]
     use_covered_topics: Option<bool>,
 
-    #[arg(long = "weak-mode", default_value_t = false, action = clap::ArgAction::SetTrue)]
-    weak_mode: bool,
+    #[arg(long = "weak-mode", action = clap::ArgAction::Set)]
+    weak_mode: Option<bool>,
 
     #[arg(long = "profile")]
     profile: Option<String>,
+
+    #[arg(long = "api-key", num_args = 0..=1, default_missing_value = "reset", help = "Set API key (saves to system keyring). Pass without value to reset interactively.")]
+    api_key: Option<String>,
 }
 
 fn expand_home(path: &str) -> PathBuf {
+    let home_key = if cfg!(target_os = "windows") { "USERPROFILE" } else { "HOME" };
+    if path == "~" {
+        return PathBuf::from(env::var(home_key).unwrap_or_else(|_| ".".to_string()));
+    }
     if path.starts_with("~/") {
-        if let Ok(home) = env::var("HOME") {
+        if let Ok(home) = env::var(home_key) {
             return PathBuf::from(home).join(&path[2..]);
         }
     }
@@ -166,10 +185,47 @@ fn issue_prompt(ctx: &str) {
         "https://github.com/xmb03/Genote/issues/new?title={}&body={}",
         title, body
     );
-    match std::process::Command::new("xdg-open").arg(&url).spawn() {
+    let result = if cfg!(target_os = "windows") {
+        std::process::Command::new("cmd").args(["/c", "start", &url]).spawn()
+    } else if cfg!(target_os = "macos") {
+        std::process::Command::new("open").arg(&url).spawn()
+    } else {
+        std::process::Command::new("xdg-open").arg(&url).spawn()
+    };
+    match result {
         Ok(_) => eprintln!("  Browser opened."),
         Err(_) => eprintln!("  Could not open browser. URL:\n  {}", url),
     }
+}
+
+fn get_keyring_entry() -> Entry {
+    Entry::new(KEYRING_SERVICE, KEYRING_USER).unwrap_or_else(|e| {
+        eprintln!("Error: failed to access system keyring: {}", e);
+        std::process::exit(1);
+    })
+}
+
+fn get_api_key_from_keyring() -> Option<String> {
+    get_keyring_entry().get_password().ok()
+}
+
+fn set_api_key_in_keyring(key: &str) {
+    if let Err(e) = get_keyring_entry().set_password(key) {
+        eprintln!("Warning: failed to save API key to system keyring: {}", e);
+    }
+}
+
+fn prompt_api_key() -> String {
+    let key = rpassword::prompt_password("Enter API key: ").unwrap_or_else(|e| {
+        eprintln!("Error: failed to read API key: {}", e);
+        std::process::exit(1);
+    });
+    let trimmed = key.trim().to_string();
+    if trimmed.is_empty() {
+        eprintln!("Error: API key cannot be empty.");
+        std::process::exit(1);
+    }
+    trimmed
 }
 
 struct Logger {
@@ -206,6 +262,19 @@ impl Logger {
     }
 }
 
+fn build_headers(provider: &Provider, api_key: &str) -> HeaderMap {
+    let mut map = HeaderMap::new();
+    for (name, value) in provider.headers(api_key) {
+        if let (Ok(n), Ok(v)) = (
+            HeaderName::from_bytes(name.as_bytes()),
+            HeaderValue::from_str(&value),
+        ) {
+            map.insert(n, v);
+        }
+    }
+    map
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
@@ -213,6 +282,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ok()
         .and_then(|p| p.parent().map(|d| d.join("config.toml")))
         .filter(|p| p.exists())
+        .or_else(|| {
+            let config_dir = if cfg!(target_os = "windows") {
+                env::var("APPDATA").unwrap_or_default()
+            } else if cfg!(target_os = "macos") {
+                env::var("HOME")
+                    .map(|h| format!("{}/Library/Application Support", h))
+                    .unwrap_or_default()
+            } else {
+                env::var("XDG_CONFIG_HOME")
+                    .unwrap_or_else(|_| {
+                        env::var("HOME")
+                            .map(|h| format!("{}/.config", h))
+                            .unwrap_or_default()
+                    })
+            };
+            let p = PathBuf::from(config_dir).join("Genote").join("config.toml");
+            p.exists().then_some(p)
+        })
         .unwrap_or_else(|| PathBuf::from("config.toml"));
 
     let config_content = fs::read_to_string(&config_path).unwrap_or_else(|_| {
@@ -267,6 +354,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .or_else(|| config_file.values.api_url.clone()),
         "api_url",
     );
+    let provider_name = args.provider.clone()
+        .or_else(|| profile_vals.provider.clone())
+        .or_else(|| config_file.values.provider.clone())
+        .unwrap_or_else(|| "ollama".to_string());
+    let provider = Provider::from_str(&provider_name);
+    let api_key = match args.api_key.as_deref() {
+        Some("reset") => {
+            let key = prompt_api_key();
+            set_api_key_in_keyring(&key);
+            key
+        }
+        Some(k) => {
+            set_api_key_in_keyring(k);
+            k.to_string()
+        }
+        None => {
+            get_api_key_from_keyring().unwrap_or_else(|| {
+                let key = prompt_api_key();
+                set_api_key_in_keyring(&key);
+                key
+            })
+        }
+    };
     let notes_dir = req(
         args.notes_dir.clone()
             .or_else(|| profile_vals.notes_dir.clone())
@@ -297,13 +407,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .or(profile_vals.notes_count)
         .or(config_file.values.notes_count)
         .unwrap_or(7);
+    if notes_count == 0 {
+        eprintln!("Error: notes_count is set to 0, nothing to load.");
+        std::process::exit(1);
+    }
     let use_covered = args.use_covered_topics
         .or(profile_vals.use_covered_topics)
         .or(config_file.values.use_covered_topics)
         .unwrap_or(false);
     let weak_mode = args.weak_mode
-        || profile_vals.weak_mode.unwrap_or(false)
-        || config_file.values.weak_mode.unwrap_or(false);
+        .or(profile_vals.weak_mode)
+        .or(config_file.values.weak_mode)
+        .unwrap_or(false);
 
     let notes_path = expand_home(&notes_dir);
     if !notes_path.exists() {
@@ -325,7 +440,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Ok(entries) = fs::read_dir(&notes_path) {
         for entry in entries.flatten() {
             let p = entry.path();
-            if p.extension().and_then(|s| s.to_str()) != Some("md") {
+            if !p.extension().and_then(|s| s.to_str()).map(|s| s.eq_ignore_ascii_case("md")).unwrap_or(false) {
                 continue;
             }
             if use_covered {
@@ -355,14 +470,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::new();
 
     for topic in &args.topics {
-        let (clean_topic, user_hint) = topic
-            .find('(')
-            .and_then(|o| topic.rfind(')').map(|c| (o, c)))
-            .filter(|(o, c)| o < c)
-            .map(|(o, c)| {
-                (topic[..o].trim().to_string(), Some(topic[o + 1..c].trim().to_string()))
-            })
-            .unwrap_or((topic.clone(), None));
+        let (clean_topic, user_hint) = {
+            let mut depth = 0i32;
+            let mut start = None;
+            let mut end = 0;
+            for (i, ch) in topic.char_indices() {
+                match ch {
+                    '(' if depth == 0 => { start = Some(i); depth = 1; }
+                    '(' => depth += 1,
+                    ')' if depth > 0 => { depth -= 1; if depth == 0 { end = i; break; } }
+                    _ => {}
+                }
+            }
+            start.filter(|_| depth == 0).map(|o| {
+                (topic[..o].trim().to_string(), Some(topic[o + 1..end].trim().to_string()))
+            }).unwrap_or((topic.clone(), None))
+        };
 
         let hint_instruction = user_hint
             .as_ref()
@@ -393,7 +516,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let start = Instant::now();
 
         let (generated_text, eval_count) = if weak_mode {
-            let chat_url = api_url.replace("/api/generate", "/api/chat");
             // ----- Stage 1: style analysis -----
             let analysis_system = "\
 You are a strict style-analysis engine. You have ONE task: extract structural/style facts from the notes below.
@@ -415,16 +537,14 @@ Extract these aspects:
 
 FAILURE TO FOLLOW THESE RULES WILL BE PENALIZED.";
 
+            let hdrs = build_headers(&provider, &api_key);
             let res1 = match client
-                .post(&chat_url)
-                .json(&json!({
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": analysis_system},
-                        {"role": "user", "content": &examples}
-                    ],
-                    "stream": false
-                }))
+                .post(&provider.chat_url(&api_url, &model, &api_key))
+                .headers(hdrs)
+                .json(&provider.build_chat_body(&model, &json!([
+                    {"role": "system", "content": analysis_system},
+                    {"role": "user", "content": &examples}
+                ])))
                 .send()
                 .await
             {
@@ -439,7 +559,7 @@ FAILURE TO FOLLOW THESE RULES WILL BE PENALIZED.";
             if !res1.status().is_success() {
                 let status = res1.status();
                 let body = res1.text().await.unwrap_or_default();
-                eprintln!("Error: Ollama API returned non-success status for \"{}\" (stage 1): {}. Body: {}", clean_topic, status, body);
+                eprintln!("Error: API returned non-success status for \"{}\" (stage 1): {}. Body: {}", clean_topic, status, body);
                 issue_prompt(&format!("[{}] Stage 1 non-success status: {}", clean_topic, status));
                 continue;
             }
@@ -452,13 +572,7 @@ FAILURE TO FOLLOW THESE RULES WILL BE PENALIZED.";
                     continue;
                 }
             };
-            let analysis = res1_json
-                .get("message")
-                .and_then(|m| m.get("content"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .trim()
-                .to_string();
+            let analysis = provider.parse_chat_response(&res1_json).0;
 
             if analysis.is_empty() {
                 eprintln!("Error: Stage 1 returned empty analysis for \"{}\".", clean_topic);
@@ -506,18 +620,16 @@ FAILURE TO FOLLOW THESE RULES WILL BE PENALIZED.";
                 clean_topic, stage2_prompt
             ));
 
+            let hdrs = build_headers(&provider, &api_key);
             let res2 = match client
-                .post(&chat_url)
-                .json(&json!({
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": analysis_system},
-                        {"role": "user", "content": &examples},
-                        {"role": "assistant", "content": &analysis},
-                        {"role": "user", "content": &stage2_prompt}
-                    ],
-                    "stream": false
-                }))
+                .post(&provider.chat_url(&api_url, &model, &api_key))
+                .headers(hdrs)
+                .json(&provider.build_chat_body(&model, &json!([
+                    {"role": "system", "content": "You are a helpful assistant that writes study notes."},
+                    {"role": "user", "content": &examples},
+                    {"role": "assistant", "content": &analysis},
+                    {"role": "user", "content": &stage2_prompt}
+                ])))
                 .send()
                 .await
             {
@@ -532,7 +644,7 @@ FAILURE TO FOLLOW THESE RULES WILL BE PENALIZED.";
             if !res2.status().is_success() {
                 let status = res2.status();
                 let body = res2.text().await.unwrap_or_default();
-                eprintln!("Error: Ollama API returned non-success status for \"{}\" (stage 2): {}. Body: {}", clean_topic, status, body);
+                eprintln!("Error: API returned non-success status for \"{}\" (stage 2): {}. Body: {}", clean_topic, status, body);
                 issue_prompt(&format!("[{}] Stage 2 non-success status: {}", clean_topic, status));
                 continue;
             }
@@ -545,13 +657,7 @@ FAILURE TO FOLLOW THESE RULES WILL BE PENALIZED.";
                     continue;
                 }
             };
-            let text = res2_json
-                .get("message")
-                .and_then(|m| m.get("content"))
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .trim()
-                .to_string();
+            let (text, eval_count_str) = provider.parse_chat_response(&res2_json);
 
             if text.is_empty() {
                 eprintln!("Error: Stage 2 returned empty response for \"{}\".", clean_topic);
@@ -561,14 +667,16 @@ FAILURE TO FOLLOW THESE RULES WILL BE PENALIZED.";
                     "--- Response for \"{}\" ---\n{}",
                     clean_topic, text
                 ));
-                let eval = res2_json["eval_count"]
-                    .as_u64()
-                    .map(|v| v.to_string())
-                    .unwrap_or_else(|| "N/A".to_string());
-                (text, eval)
+                (text, eval_count_str)
             }
         } else {
             // ----- Normal mode: single /api/generate request -----
+            let size_reminder = if note_size == "small" {
+                "REMINDER: 25-30 LINES ONLY. VERIFY COUNT BEFORE OUTPUT."
+            } else {
+                ""
+            };
+
             let prompt = format!(
                 "You are a strict note-writing assistant. Follow ALL rules EXACTLY.\n\n\
                  RULES:\n\
@@ -582,7 +690,7 @@ FAILURE TO FOLLOW THESE RULES WILL BE PENALIZED.";
                  - OUTPUT ONLY THE NOTE. No greetings, no introductions, no conclusions, \
                  no commentary, no extra text.\n\n\
                  STYLE EXAMPLES:\n{}\n\n\
-                 REMINDER: 25-30 LINES ONLY. VERIFY COUNT BEFORE OUTPUT.\n\n\
+                 {}\n\n\
                  OUTPUT:",
                 clean_topic,
                 lang,
@@ -594,6 +702,7 @@ FAILURE TO FOLLOW THESE RULES WILL BE PENALIZED.";
                 hint_instruction,
                 covered_instruction,
                 examples,
+                size_reminder,
             );
 
             logger.prompt(&format!(
@@ -601,13 +710,11 @@ FAILURE TO FOLLOW THESE RULES WILL BE PENALIZED.";
                 clean_topic, prompt
             ));
 
+            let hdrs = build_headers(&provider, &api_key);
             let res = match client
-                .post(&api_url)
-                .json(&json!({
-                    "model": model,
-                    "prompt": prompt,
-                    "stream": false
-                }))
+                .post(&provider.generate_url(&api_url, &model, &api_key))
+                .headers(hdrs)
+                .json(&provider.build_generate_body(&model, &prompt))
                 .send()
                 .await
             {
@@ -622,7 +729,7 @@ FAILURE TO FOLLOW THESE RULES WILL BE PENALIZED.";
             if !res.status().is_success() {
                 let status = res.status();
                 let body = res.text().await.unwrap_or_else(|_| "Failed to read response body".to_string());
-                eprintln!("Error: Ollama API returned non-success status for \"{}\": {}. Body: {}", clean_topic, status, body);
+                eprintln!("Error: API returned non-success status for \"{}\": {}. Body: {}", clean_topic, status, body);
                 issue_prompt(&format!("[{}] Non-success status: {}", clean_topic, status));
                 continue;
             }
@@ -635,26 +742,17 @@ FAILURE TO FOLLOW THESE RULES WILL BE PENALIZED.";
                     continue;
                 }
             };
-            let text = res_json
-                .get("response")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .trim()
-                .to_string();
+            let (text, eval_count_str) = provider.parse_generate_response(&res_json);
 
             if text.is_empty() {
-                eprintln!("Error: Ollama returned an empty response for \"{}\".", clean_topic);
+                eprintln!("Error: API returned an empty response for \"{}\".", clean_topic);
                 (String::new(), "N/A".to_string())
             } else {
                 logger.response(&format!(
                     "--- Response for \"{}\" ---\n{}",
                     clean_topic, text
                 ));
-                let eval = res_json["eval_count"]
-                    .as_u64()
-                    .map(|v| v.to_string())
-                    .unwrap_or_else(|| "N/A".to_string());
-                (text, eval)
+                (text, eval_count_str)
             }
         };
 
@@ -680,7 +778,7 @@ FAILURE TO FOLLOW THESE RULES WILL BE PENALIZED.";
             }
         }
 
-        let safe_filename = clean_topic.replace(' ', "_").replace('/', "_");
+        let safe_filename = clean_topic.replace([' ', '/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
         let new_file_path = notes_path.join(format!("{}.md", safe_filename));
 
         if let Err(e) = fs::write(&new_file_path, &generated_text) {

@@ -1,5 +1,5 @@
 {
-  description = "Genote - Generate IT study notes using local LLMs via Ollama";
+  description = "Genote - Generate IT study notes using local LLMs and cloud APIs";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
@@ -18,7 +18,7 @@
           lib = pkgs.lib;
           genote = pkgs.rustPlatform.buildRustPackage rec {
             pname = "genote";
-            version = "0.3.5";
+            version = "0.4.1";
             src = lib.cleanSourceWith {
               filter = f: t: t != "target" && t != ".git" && t != ".playwright-mcp" && t != ".opencode/node_modules";
               src = self;

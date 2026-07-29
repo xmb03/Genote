@@ -8,7 +8,10 @@ jobs:
   build:
     permissions:
       contents: write
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -17,11 +20,14 @@ jobs:
         run: cargo build --release
 
       - name: Prepare archive
+        shell: bash
         run: |
-          BIN=$(grep '^name = ' Cargo.toml | head -1 | sed 's/name = "\(.*\)"/\1/')
+          BIN=genote
+          TARGET=$(rustc -vV | grep host | cut -d' ' -f2)
+          case "$TARGET" in *windows*) BIN=genote.exe ;; esac
           mkdir -p dist
           cp "target/release/$BIN" dist/
-          cd dist && tar czf "../$BIN-linux-x86_64.tar.gz" "$BIN"
+          cd dist && tar czf "../genote-$TARGET.tar.gz" "$BIN"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -29,6 +35,8 @@ jobs:
           files: genote-*.tar.gz
           body: |
             ### Changes in ${{ github.ref_name }}
+            - **Cross‑platform builds** — Linux, macOS, Windows
+            - **Multi‑provider + API keyring** — Ollama, OpenAI, Anthropic, Gemini, llama.cpp; keys stored in OS keychain
             - **GitHub issue prompt** — on any error, prompts `[y/N]` to open a pre‑filled issue at github.com/xmb03/Genote/issues/new (suppress with `GENOTE_NO_ISSUE=1`)
             - **Weak mode** — two‑stage generation (`--weak-mode`) for models <15B. Analyzes your style first, then writes the note. Slower but accurate style cloning
             - **Logging control** — configure verbosity per‑category: `log = true`, `log = false`, or `[log] prompt = false`
