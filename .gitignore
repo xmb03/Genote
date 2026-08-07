@@ -7,3 +7,5 @@ Thumbs.db
 error.md
 AGENTS.md
 .opencode/
+.omre/
+test/logs/

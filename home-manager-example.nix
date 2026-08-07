@@ -20,6 +20,9 @@
       use_covered_topics = true;
       weak_mode = true;
 
+      # api_key = "sk-...";                       # for openai/anthropic/gemini
+      # skill = "~/skills/concise.md";            # style rules → model's system prompt
+
       # log = true;                                # show everything
       # log = { prompt = false; response = true; } # hide prompts, show responses
 

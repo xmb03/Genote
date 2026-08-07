@@ -30,7 +30,6 @@
           };
         in {
           packages = { genote = genote; default = genote; };
-          nixosModules.default = import ./modules/nixos.nix { inherit lib pkgs; config = { programs.genote.package = genote; }; };
           devShells.default = pkgs.mkShell { buildInputs = [ pkgs.cargo pkgs.rustc pkgs.openssl pkgs.pkg-config ]; };
         });
 
@@ -39,10 +38,19 @@
         config = { programs.genote.package = forEachSystem.x86_64-linux.packages.genote; };
       };
 
-      nixosModule = import ./modules/nixos.nix {
+      games-nixos = import ./modules/games/heroic.nix {
         inherit (import nixpkgs { system = "x86_64-linux"; }) lib pkgs;
-        config = { programs.genote.package = forEachSystem.x86_64-linux.packages.genote; };
+        config = { };
+      };
+
+      games-hm = import ./modules/games/heroic-hm.nix {
+        inherit (import nixpkgs { system = "x86_64-linux"; }) lib pkgs;
+        config = { };
       };
     in
-    forEachSystem // { homeManagerModules.default = hmModule; nixosModules.default = nixosModule; };
+    forEachSystem // {
+      homeManagerModules.default = hmModule;
+      homeManagerModules.heroic = games-hm;
+      nixosModules.heroic = games-nixos;
+    };
 }

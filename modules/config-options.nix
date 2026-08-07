@@ -10,6 +10,8 @@
     notes_count = lib.mkOption { type = lib.types.int; default = 7; description = "Number of example notes to use"; };
     use_covered_topics = lib.mkOption { type = lib.types.bool; default = false; description = "Restrict model to concepts from existing note filenames"; };
     weak_mode = lib.mkOption { type = lib.types.bool; default = false; description = "Two-stage generation for models <15B. Slower, better style cloning"; };
+    api_key = lib.mkOption { type = lib.types.str; default = ""; description = "API key for cloud providers (openai/anthropic/gemini). Stored plaintext in config.toml"; };
+    skill = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; description = "Path to a style-rules file injected into the model's system prompt"; example = "~/skills/concise.md"; };
     log = lib.mkOption {
       type = lib.types.nullOr lib.types.anything;
       default = null;
@@ -21,6 +23,6 @@
       '';
       example = { prompt = false; response = true; };
     };
-    default = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; description = "Default profile name when --profile not specified";
-};
+    default = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; description = "Default profile name when --profile not specified"; };
+  };
 }

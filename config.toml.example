@@ -7,16 +7,17 @@
 #   "llamacpp"  llama.cpp server (native /completion endpoint).
 #               URL example: http://127.0.0.1:8080
 #   "anthropic" Anthropic Claude. URL: https://api.anthropic.com
-#               Requires api_key (stored in system keyring via --api-key)
+#               Requires api_key (in config.toml, or via --api-key / GENOTE_API for this run)
 #   "gemini"    Google Gemini. URL: https://generativelanguage.googleapis.com
 #               Requires api_key
 # =============================================================================
 # provider = "ollama"
 
-# API key is stored in your system keyring (not in this file).
-# Set:           genote --api-key "sk-..."
-# Reset/prompt:  genote --api-key
-# First run      (no key found) → prompts interactively.
+# API key for cloud providers (openai/anthropic/gemini). Stored right here in
+# config.toml, plaintext. Local providers (ollama, llamacpp) don't need it.
+# Override per-run with: genote --api-key "sk-..."  (session only, not saved)
+# Or set the GENOTE_API environment variable (takes precedence over this file).
+# api_key = "sk-..."
 
 # =============================================================================
 # Flat config (simple) — all settings at root level.
@@ -26,10 +27,18 @@
 # api_url = "http://127.0.0.1:11434"
 # notes_dir = "~/path/to/your/notes"
 # lang = "en"
-# note_size = "small"
+# note_size = "small"   # small = 25-30 lines, mid = 45-68 lines, big = comprehensive
 # notes_count = 7
-# use_covered_topics = false
+# notes_include = ["rust.md", "borrow.md"]   # ONLY these .md files in notes_dir are used as style examples.
+#                                           # Extension optional ("rust" works too); missing files are
+#                                           # skipped with a warning. Absent/empty = load all .md as usual.
+#                                           # Does NOT restrict the covered-topics list (use_covered_topics).
+# use_covered_topics = false    # true = model treats existing notes as already-known topics:
+#                               # must NOT re-explain them, only build on them.
 # weak_mode = true       # two-stage generation for models <15B. Slower, better style cloning.
+# temperature = 0.7      # optional sampling temperature; unset = provider default.
+# skill = "~/skills/concise.md"  # path to a style-rules file (what to do / what NOT to do).
+#                                # Injected into system prompt AND user-prompt preamble.
 
 # =============================================================================
 # Profile-based config — define multiple environments.
@@ -44,6 +53,7 @@ model = "llama3"
 api_url = "http://127.0.0.1:11434"
 provider = "ollama"
 lang = "en"
+weak_mode = true   # two-stage for small models; override per profile or remove if not needed
 
 # --- Profile: work ---
 [profile.work]
@@ -134,4 +144,3 @@ note_size = "small"
 # log = false:         nothing shown (except errors).
 # =============================================================================
 # log = { prompt = false, response = false }   # only status + timing
-weak_mode = true      # two-stage for small models on this host
