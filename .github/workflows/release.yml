@@ -94,6 +94,14 @@ jobs:
           sed -i "s/^sha256sums=.*/sha256sums=('${SHA}')/" PKGBUILD/build/PKGBUILD
           grep -E '^(pkgver|sha256sums)' PKGBUILD/build/PKGBUILD
 
+      - name: Verify PKGBUILD checksum updated (genote)
+        run: |
+          SHA=$(sed -n "s/^sha256sums=('\([0-9a-f]*\)')/\1/p" PKGBUILD/build/PKGBUILD)
+          [ "${#SHA}" -eq 64 ] && [ "$SHA" != "0000000000000000000000000000000000000000000000000000000000000000" ] || {
+            echo "sha256sums not updated in PKGBUILD/build/PKGBUILD"
+            exit 1
+          }
+
       - name: Update PKGBUILD for binary package (genote-bin)
         run: |
           set -euo pipefail
@@ -103,6 +111,14 @@ jobs:
           sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD/bin/PKGBUILD
           sed -i "s/^sha256sums=.*/sha256sums=('${SHA}')/" PKGBUILD/bin/PKGBUILD
           grep -E '^(pkgver|sha256sums)' PKGBUILD/bin/PKGBUILD
+
+      - name: Verify PKGBUILD checksum updated (genote-bin)
+        run: |
+          SHA=$(sed -n "s/^sha256sums=('\([0-9a-f]*\)')/\1/p" PKGBUILD/bin/PKGBUILD)
+          [ "${#SHA}" -eq 64 ] && [ "$SHA" != "0000000000000000000000000000000000000000000000000000000000000000" ] || {
+            echo "sha256sums not updated in PKGBUILD/bin/PKGBUILD"
+            exit 1
+          }
 
       - name: Deploy genote to AUR
         uses: KSXGitHub/github-actions-deploy-aur@v4.2.0
